@@ -22,7 +22,7 @@
   function buscarNuevo(){
     var url = window.TURNO_DATOS_URL;
     if (!url || !window.fetch) return;
-    fetch(url + "?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(n){
+    fetch(url, { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(n){
       if (!n || !n.generado || !Array.isArray(n.semanas) || n.generado <= (D.generado || "")) return;
       D = n;
       try { localStorage.setItem(KEY_DATOS, JSON.stringify(n)); } catch (e) {}
@@ -128,8 +128,8 @@
   // En la versión del sitio, cada vez que se vuelve a la app revisa si hay semanas nuevas
   document.addEventListener("visibilitychange", function(){ if (!document.hidden) buscarNuevo(); });
 
-  /* ---------- Uso sin conexión (solo web, no en la APK) ---------- */
-  if (!esApk && "serviceWorker" in navigator && location.protocol === "https:") {
+  /* ---------- Uso sin conexión (web y APK, cuando se abre desde el sitio) ---------- */
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
     window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
   }
 })();

@@ -1,5 +1,5 @@
 /* Guarda la app para usarla sin conexión. Las semanas nuevas llegan al recargar con internet. */
-const CACHE = "turno-202611131149";
+const CACHE = "turno-202611131158";
 const ARCHIVOS = ["./", "index.html", "datos.js", "datos.json", "local.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -13,7 +13,8 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   e.respondWith(
     fetch(e.request).then(r => {
-      if (r.ok && new URL(e.request.url).origin === location.origin) {
+      const u = new URL(e.request.url);
+      if (r.ok && u.origin === location.origin && !u.search && !u.pathname.endsWith(".apk")) {
         const copia = r.clone();
         caches.open(CACHE).then(c => c.put(e.request, copia));
       }
