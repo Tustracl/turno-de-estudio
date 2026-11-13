@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turno de estudio</title>
+<meta name="theme-color" content="#141c18">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Plan: plano de una red de trenes. Cada ramo es una línea con su color (L1, L2, L3),
+     cada semana un tramo y cada misión una estación. Franja de borde de andén arriba. */
+  --bg:#eceeeb; --surface:#ffffff; --surface2:#f6f7f5; --ink:#141c18; --muted:#5d6b64; --line:#d4dad6;
+  --yellow:#f3c300; --ok:#0a7a4b; --ok-soft:#dcefe5; --bad:#b3261e; --bad-soft:#f8e1df;
+  --c:#0a7a4b;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1210; --surface:#151c19; --surface2:#1b2420; --ink:#e7eee9; --muted:#9aa9a1; --line:#2b3732;
+    --ok:#3ac487; --ok-soft:#183a2a; --bad:#ff8a80; --bad-soft:#3a1d1b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1210; --surface:#151c19; --surface2:#1b2420; --ink:#e7eee9; --muted:#9aa9a1; --line:#2b3732;
+  --ok:#3ac487; --ok-soft:#183a2a; --bad:#ff8a80; --bad-soft:#3a1d1b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);line-height:1.05;margin:0;text-wrap:balance}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 56px}
+.edge{height:12px;background:repeating-linear-gradient(-45deg,var(--yellow) 0 12px,#1b1b1b 12px 24px)}
+.tint{color:var(--c)}
+
+/* Cabecera global */
+header.top{padding:18px 0 4px;display:grid;gap:14px}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:40px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+.me{display:flex;gap:14px;align-items:center}
+.me .n{font-family:var(--display);font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.me .l{font-size:12px;color:var(--muted);display:block}
+.flame{display:flex;align-items:center;gap:6px}
+.flame svg{width:22px;height:22px}
+.lvl{display:grid;gap:6px}
+.lvl .row{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--muted)}
+.lvl .row strong{color:var(--ink);font-family:var(--display);font-size:19px;letter-spacing:.5px;text-transform:uppercase}
+.bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c);border-radius:6px;transition:width .5s}
+.bar.ink i{background:var(--ink)}
+
+section.block{margin-top:26px;display:grid;gap:12px}
+.sh{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.sh h2{font-size:22px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700}
+.sh span{font-size:14px;color:var(--muted)}
+
+/* Insignia de línea */
+.badge{flex:none;width:44px;height:44px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.5px}
+.badge.sm{width:30px;height:30px;font-size:14px}
+
+/* Próximas entregas */
+.dues{display:grid;gap:8px}
+.due{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:10px;padding:10px 12px}
+.due .when{font-family:var(--display);font-weight:800;font-size:24px;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:78px}
+.due.urgent .when{color:var(--bad)}
+.due p{margin:0;font-size:14px;flex:1}
+.due p strong{font-size:15px}
+.due .btn{padding:8px 12px;font-size:14px}
+
+/* Tarjetas de ramo */
+.ramos{display:grid;gap:12px}
+.ramo{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden}
+.ramo::after{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c)}
+.ramo:hover{border-color:var(--c)}
+.ramo .info{display:grid;gap:8px;min-width:0}
+.ramo h3{font-size:28px;font-weight:700}
+.ramo .sub{font-size:14px;color:var(--muted)}
+.ramo .foot{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:14px}
+.ramo .go{position:absolute;right:14px;top:16px;font-family:var(--display);font-size:22px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line)}
+.chip.warn{background:var(--yellow);border-color:var(--yellow);color:#1b1b1b}
+.chip.c{background:color-mix(in srgb,var(--c) 14%,var(--surface));border-color:color-mix(in srgb,var(--c) 40%,var(--surface));color:var(--ink)}
+
+/* Vista de ramo */
+.back{border:0;background:transparent;font-weight:700;color:var(--muted);padding:14px 0 0;font-size:15px}
+.hero{margin-top:10px;border-radius:18px;background:var(--c);color:#fff;padding:20px;display:grid;gap:14px;position:relative;overflow:hidden}
+.hero .top{display:flex;gap:14px;align-items:center}
+.hero .badge{background:#fff;color:var(--c);width:56px;height:56px;font-size:24px}
+.hero h2{font-size:38px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.hero .meta{font-size:14px;opacity:.9}
+.hero .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hero .nums div{background:rgba(255,255,255,.14);border-radius:10px;padding:8px 10px}
+.hero .nums b{display:block;font-family:var(--display);font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
+.hero .nums span{font-size:12px;opacity:.9}
+.hero .rails{position:absolute;right:-30px;bottom:-30px;width:180px;height:180px;border:14px solid rgba(255,255,255,.10);border-radius:50%}
+
+.next{background:var(--surface);border:2px solid var(--c);border-radius:16px;padding:16px;display:grid;gap:8px}
+.next .k{font-family:var(--display);font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.next h3{font-size:30px;font-weight:700}
+.next p{margin:0;color:var(--muted)}
+.btn{border:0;border-radius:10px;padding:12px 18px;font-weight:700;font-size:16px;background:var(--ink);color:var(--bg);justify-self:start}
+.btn.c{background:var(--c);color:#fff}
+.btn.ghost{background:transparent;border:2px solid var(--line);color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:default}
+.review{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px dashed var(--muted);border-radius:12px;padding:12px 14px}
+.review p{margin:0;flex:1;font-size:15px}
+
+.linecard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 16px 4px}
+.linehead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.linehead h3{font-size:26px;font-weight:700}
+.linehead span{font-size:14px;color:var(--muted)}
+ol.stations{list-style:none;margin:0;padding:0}
+ol.stations li{position:relative;padding:0 0 0 46px}
+ol.stations li::before{content:"";position:absolute;left:15px;top:0;bottom:0;width:6px;background:var(--line)}
+ol.stations li.done::before{background:var(--c)}
+ol.stations li:first-child::before{top:22px}
+ol.stations li:last-child::before{bottom:calc(100% - 22px)}
+.stop{position:absolute;left:4px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--surface);border:5px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:700}
+li.done .stop{border-color:var(--c);background:var(--c);color:#fff}
+li.next .stop{border-color:var(--yellow);box-shadow:0 0 0 4px color-mix(in srgb,var(--yellow) 35%,transparent)}
+@media (prefers-reduced-motion:no-preference){li.next .stop{animation:pulse 1.8s ease-in-out infinite}}
+@keyframes pulse{50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--yellow) 8%,transparent)}}
+.stationbtn{display:flex;width:100%;text-align:left;gap:10px;align-items:center;justify-content:space-between;border:0;background:transparent;padding:10px 0 14px;border-bottom:1px solid var(--line)}
+li:last-child .stationbtn{border-bottom:0}
+.stationbtn .nm{font-family:var(--display);font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block}
+.stationbtn .tt{font-weight:700;display:block}
+.stationbtn .rt{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--c) 15%,var(--surface));color:var(--ink)}
+.note{font-size:14px;color:var(--muted)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:18px;color:var(--muted)}
+.empty strong{color:var(--ink)}
+
+/* Reproductor */
+.player{position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:10}
+.player[hidden]{display:none}
+.phead{position:sticky;top:0;background:var(--bg);padding:12px 16px;border-bottom:3px solid var(--c);z-index:2}
+.phead .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.close{border:0;background:transparent;font-size:15px;font-weight:700;color:var(--muted);padding:6px 0}
+.segs{display:flex;gap:4px}
+.segs i{flex:1;height:8px;border-radius:4px;background:var(--line)}
+.segs i.on{background:var(--c)}
+.segs i.cur{background:var(--yellow)}
+.xpnow{font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;color:var(--c)}
+.pbody{max-width:760px;margin:0 auto;padding:22px 16px 120px;display:grid;gap:16px}
+.kicker{font-family:var(--display);text-transform:uppercase;letter-spacing:1.5px;color:var(--c);font-size:15px;font-weight:700}
+.q{font-size:22px;font-weight:700;line-height:1.3;margin:0}
+.opts{display:grid;gap:10px}
+.opt{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:14px;text-align:left;font-size:17px}
+.opt:hover:not(:disabled){border-color:var(--c)}
+.opt.ok{border-color:var(--ok);background:var(--ok-soft)}
+.opt.bad{border-color:var(--bad);background:var(--bad-soft)}
+.opt:disabled{cursor:default}
+.fb{border-radius:12px;padding:14px;background:var(--surface);border:1px solid var(--line)}
+.fb strong{display:block;font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.5px}
+.fb.ok strong{color:var(--ok)}
+.fb.bad strong{color:var(--bad)}
+.fb p{margin:6px 0 0}
+.reading p{margin:0 0 12px;font-size:18px;max-width:65ch}
+.dock{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px}
+.dock .in{max-width:760px;margin:0 auto;display:flex;gap:10px;justify-content:flex-end;align-items:center}
+.dock .in .note{margin-right:auto}
+.dock .btn{background:var(--c);color:#fff}
+.card3d{perspective:1000px;min-height:220px}
+.flip{position:relative;width:100%;min-height:220px;border:0;background:transparent;padding:0;transform-style:preserve-3d;transition:transform .45s}
+.flip.on{transform:rotateY(180deg)}
+@media (prefers-reduced-motion:reduce){.flip{transition:none}}
+.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;padding:22px;display:grid;place-content:center;text-align:center;gap:8px;border:2px solid var(--line);background:var(--surface)}
+.face.back{transform:rotateY(180deg);background:var(--c);color:#fff;border-color:var(--c)}
+.face .big{font-family:var(--display);font-size:32px;font-weight:700;line-height:1.1}
+.face .hint{font-size:13px;color:var(--muted)}
+.face.back p{margin:0;font-size:19px}
+.cardnav{display:flex;justify-content:space-between;align-items:center}
+.order{display:grid;gap:8px}
+.slot{display:flex;gap:10px;align-items:center;border:2px dashed var(--line);border-radius:10px;padding:10px 12px;min-height:48px;background:var(--surface)}
+.slot b{font-family:var(--display);font-size:22px;width:22px;color:var(--muted)}
+.slot.filled{border-style:solid;border-color:var(--ink)}
+.slot.ok{border-color:var(--ok);background:var(--ok-soft)}
+.slot.bad{border-color:var(--bad);background:var(--bad-soft)}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.pool .chip{border:2px solid var(--ink);background:var(--surface);border-radius:10px;padding:8px 12px;text-align:left;font-size:15px;font-weight:400}
+.pool .chip:disabled{opacity:.25}
+.cls{display:grid;gap:10px}
+.clsitem{background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px}
+.clsitem.ok{border-color:var(--ok)}
+.clsitem.bad{border-color:var(--bad)}
+.cats{display:flex;flex-wrap:wrap;gap:6px}
+.cat{border:2px solid var(--line);background:transparent;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700}
+.cat[aria-pressed="true"]{border-color:var(--c);background:var(--c);color:#fff}
+.clsitem .right{font-size:14px;color:var(--bad)}
+.taller{display:grid;gap:18px}
+.case{background:var(--surface);border-left:6px solid var(--yellow);border-radius:8px;padding:14px;font-size:16px}
+.tq{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+.tq h3{font-family:var(--body);font-size:17px;line-height:1.35}
+.tq .ind{font-size:13px;color:var(--muted)}
+.tq textarea{width:100%;min-height:150px;border:2px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:16px;background:var(--bg);color:var(--ink);resize:vertical}
+.tq details summary{cursor:pointer;font-weight:700;font-size:15px}
+.tq ul{margin:6px 0 0;padding-left:20px;font-size:15px}
+.tq .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tq .btn.ghost{background:transparent;color:var(--ink)}
+.ai{background:color-mix(in srgb,var(--c) 12%,var(--surface));border-radius:10px;padding:12px;font-size:15px;white-space:pre-wrap}
+.check{display:grid;gap:8px}
+.check label{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.check input{width:20px;height:20px;margin-top:2px;accent-color:var(--c)}
+.done-screen{text-align:center;display:grid;gap:12px;justify-items:center;padding-top:30px}
+.done-screen .score{font-family:var(--display);font-size:84px;font-weight:800;line-height:1;color:var(--c);font-variant-numeric:tabular-nums}
+.done-screen p{margin:0;max-width:44ch}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;z-index:20}
+.toast[hidden]{display:none}
+/* Repaso dinámico */
+.challenge{background:var(--surface);border:2px solid var(--yellow);border-radius:16px;padding:16px;display:grid;gap:8px;position:relative;overflow:hidden}
+.challenge::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(-45deg,var(--yellow) 0 10px,#1b1b1b 10px 20px)}
+.challenge .k{font-family:var(--display);font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.challenge h3{font-size:28px;font-weight:700}
+.challenge p{margin:0;color:var(--muted);font-size:15px}
+.challenge .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip.now{background:var(--yellow);border-color:var(--yellow);color:#1b1b1b}
+.chip.past{background:transparent}
+.weekbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px;font-size:14px;color:var(--muted)}
+.weekbar .bar{flex:1;min-width:90px}
+.weekbar .btn{padding:7px 12px;font-size:14px}
+.combo{display:inline-block;margin-right:8px;font-size:14px;padding:2px 8px;border-radius:999px;background:var(--yellow);color:#1b1b1b;vertical-align:middle}
+.combo[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.combo.pop{animation:pop .35s ease-out}}
+@keyframes pop{0%{transform:scale(1.5)}100%{transform:scale(1)}}
+.src{font-size:13px;color:var(--muted);font-style:italic;margin:4px 0 0}
+@media (max-width:420px){.brand h1{font-size:32px}.hero h2{font-size:30px}.ramo h3{font-size:24px}.q{font-size:20px}.hero .nums b{font-size:24px}}
+.tools{display:flex;flex-wrap:wrap;gap:8px}.tools a.btn{text-decoration:none;display:inline-block}
+</style>
+</head>
+<body>
+<div class="edge" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Turno de estudio</h1>
+      <div class="me">
+        <div class="flame"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#f3c300" stroke="#1b1b1b" stroke-width="1.2" d="M12 2c1 4 5 5.5 5 11a5 5 0 0 1-10 0c0-2.6 1.4-4 2.4-5.3.2 1.6.9 2.6 1.9 3.1C11 8 11.2 4.8 12 2z"/></svg><div><span class="n" id="st-racha">0</span><span class="l">días de racha</span></div></div>
+        <div><span class="n" id="st-xp">0</span><span class="l">puntos</span></div>
+      </div>
+    </div>
+    <div class="lvl"><div class="row"><strong id="st-lvl">Aprendiz</strong><span id="st-next">—</span></div><div class="bar ink"><i id="st-bar" style="width:0%"></i></div></div>
+  </header>
+  <main id="view"><div class="empty" style="margin-top:20px">Cargando tus ramos…</div></main>
+  <p class="note" style="margin-top:28px">Tu avance se guarda en este dispositivo. Para seguir en otro, usa <strong>Copiar respaldo</strong> aquí y <strong>Restaurar respaldo</strong> allá.</p>
+  <div id="local-tools"></div>
+</div>
+
+<div class="player" id="player" hidden role="dialog" aria-modal="true">
+  <div class="phead"><div class="in"><button class="close" id="p-close">✕ Salir</button><div class="segs" id="p-segs"></div><span class="xpnow"><span class="combo" id="p-combo" hidden></span><span id="p-xp">+0</span></span></div></div>
+  <div class="pbody" id="p-body"></div>
+  <div class="dock"><div class="in"><span class="note" id="p-note"></span><button class="btn" id="p-next" disabled>Continuar</button></div></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="datos.js"></script>
+<script src="local.js"></script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const NIVELES=[[0,"Aprendiz"],[150,"Brigadista"],[400,"Monitor de seguridad"],[800,"Supervisor"],[1500,"Prevencionista"]];
+const fecha=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const hoy=()=>fecha(new Date());
+const ayer=()=>{const d=new Date();d.setDate(d.getDate()-1);return fecha(d)};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const oscuro=()=>{const t=document.documentElement.getAttribute("data-theme");return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches};
+
+let db=null, sample=null, semanas=[], prog=null, ramos=[];
+const PROG_PATH="progreso/osvaldo";
+const blank=()=>({xp:0,racha:0,ultimoDia:"",misiones:{},preguntas:{},notas:{},checks:{},repasos:{},desafios:{}});
+const PALETA=["#0a7a4b","#1d5fc4","#c2501b","#7a3db8","#a8365b"];
+
+function listaRamos(){
+  // ramos definidos en config/ramos; si falta alguno, se deduce de las semanas cargadas
+  const out=ramos.slice();
+  semanas.forEach(s=>{if(!out.find(r=>r.codigo===s.codigo))out.push({codigo:s.codigo,nombre:s.curso,linea:"L"+(out.length+1)})});
+  out.forEach((r,i)=>{if(!r.color)r.color=PALETA[i%PALETA.length]});
+  return out;
+}
+function ramoDe(cod){return listaRamos().find(r=>r.codigo===cod)}
+function colorDe(cod){const r=ramoDe(cod);if(!r)return PALETA[0];return (oscuro()&&r.colorOscuro)||r.color}
+
+/* ---------- Guardado ---------- */
+let saving=false, dirty=false;
+async function save(){
+  if(!db)return;
+  if(saving){dirty=true;return}
+  saving=true;
+  try{await db.doc(PROG_PATH).set(JSON.parse(JSON.stringify(prog)))}
+  catch(e){toast(e&&e.code==="quota_exceeded"?"No hay espacio para guardar el avance":"No se pudo guardar; se reintentará")}
+  saving=false;
+  if(dirty){dirty=false;save()}
+}
+let noteTimer=null;
+function saveSoon(){clearTimeout(noteTimer);noteTimer=setTimeout(save,1200)}
+function ganar(xp){
+  if(!xp)return;
+  const h=hoy();
+  if(prog.ultimoDia!==h){prog.racha=(prog.ultimoDia===ayer())?(prog.racha||0)+1:1;prog.ultimoDia=h}
+  prog.xp=(prog.xp||0)+xp;
+  sesionXP+=xp; $("#p-xp").textContent="+"+sesionXP;
+}
+async function copiar(t){
+  try{await navigator.clipboard.writeText(t);return true}catch(e){}
+  try{const a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();const ok=document.execCommand("copy");a.remove();return ok}catch(e){return false}
+}
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(el._t);el._t=setTimeout(()=>el.hidden=true,2600)}
+
+/* ---------- Cálculos ---------- */
+function nivel(xp){let cur=NIVELES[0],nx=null;for(let i=0;i<NIVELES.length;i++){if(xp>=NIVELES[i][0]){cur=NIVELES[i];nx=NIVELES[i+1]||null}}return{cur,nx}}
+const misKey=(s,m)=>s.id+"/"+m.id;
+const et=s=>s.etiqueta||"Semana";
+const semDe=cod=>semanas.filter(s=>s.codigo===cod).sort((a,b)=>(b.desde||"").localeCompare(a.desde||""));
+// estado de una semana según la fecha: "actual", "prox" (todavía no empieza) o "pasada"
+function estado(s){const h=hoy();if(s.desde&&s.desde>h)return"prox";if(s.hasta&&s.hasta<h)return"pasada";return"actual"}
+// primero lo de esta semana, luego lo que viene y al final lo pasado (más reciente primero)
+function ordenSem(lista){const g={actual:0,prox:1,pasada:2};return lista.slice().sort((a,b)=>{const ea=estado(a),eb=estado(b);if(ea!==eb)return g[ea]-g[eb];return ea==="pasada"?(b.desde||"").localeCompare(a.desde||""):(a.desde||"").localeCompare(b.desde||"")})}
+const fmtDia=d=>new Date(d+"T12:00").toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
+// preguntas con puntaje de una semana
+function evaluables(s){const out=[];(s.misiones||[]).forEach(m=>(m.pasos||[]).forEach(p=>{if(p.id&&(p.t==="mc"||p.t==="orden"||p.t==="clasificar"))out.push({s,m,p})}));return out}
+// % de preguntas de la semana cuya última respuesta fue correcta
+function dominio(s){const q=evaluables(s),P=prog.preguntas||{};if(!q.length)return null;return Math.round(q.filter(x=>{const r=P[x.p.id];return r&&r.ok>0&&!r.pend}).length/q.length*100)}
+// repetición espaciada simple: primero lo fallado, luego lo nunca visto, luego lo que lleva más días sin repasar
+function priorizar(items){
+  const P=prog.preguntas||{},now=Date.now();
+  return items.map(x=>{const r=P[x.p.id];let w;
+    if(!r)w=50;else if(r.pend)w=100;else{const dias=r.ultima?Math.max(0,(now-Date.parse(r.ultima+"T12:00"))/86400000):30;w=Math.min(dias,30)+(r.fallos||0)*4}
+    return{x,w:w+Math.random()*12}}).sort((a,b)=>b.w-a.w).map(o=>o.x);
+}
+function mazo(sems,n){const c=[];sems.forEach(s=>(s.misiones||[]).forEach(m=>(m.pasos||[]).forEach(p=>{if(p.t==="tarjetas")(p.cartas||[]).forEach(x=>c.push(x))})));return shuffle(c).slice(0,n)}
+const poolDesafio=()=>semanas.filter(s=>estado(s)!=="prox").flatMap(evaluables);
+function siguiente(cod){
+  const lista=ordenSem(cod?semDe(cod):semanas);
+  for(const s of lista)for(const m of s.misiones||[])if(!(prog.misiones[misKey(s,m)]||{}).hecha)return{s,m};
+  return null;
+}
+function fallos(cod){
+  const out=[],P=prog.preguntas||{};
+  semanas.filter(s=>!cod||s.codigo===cod).forEach(s=>(s.misiones||[]).forEach(m=>(m.pasos||[]).forEach(p=>{if(p.id&&P[p.id]&&P[p.id].pend)out.push({s,m,p})})));
+  return out;
+}
+function resumen(cod){
+  let total=0,hechas=0,ok=0,q=0;
+  semDe(cod).forEach(s=>(s.misiones||[]).forEach(m=>{total++;const st=prog.misiones[misKey(s,m)]||{};if(st.hecha){hechas++;ok+=st.ok||0;q+=st.total||0}}));
+  return{total,hechas,pct:q?Math.round(ok/q*100):null};
+}
+function entregas(cod){
+  const now=Date.now(),out=[];
+  semanas.filter(s=>!cod||s.codigo===cod).forEach(s=>(s.entregas||[]).forEach(e=>{const t=Date.parse(e.vence);if(!isNaN(t)&&t>now-6*3600000)out.push({s,e,t})}));
+  return out.sort((a,b)=>a.t-b.t);
+}
+function fmtFalta(ms){
+  if(ms<=0)return"Hoy";
+  const h=Math.floor(ms/3600000),d=Math.floor(h/24);
+  if(d>=1)return d+" d "+(h%24)+" h";
+  return h+" h "+Math.floor((ms%3600000)/60000)+" m";
+}
+const fmtFecha=t=>new Date(t).toLocaleString("es-CL",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+
+/* ---------- Vistas ---------- */
+function renderStats(){
+  const p=prog||blank();
+  let racha=p.racha||0; if(p.ultimoDia!==hoy()&&p.ultimoDia!==ayer())racha=0;
+  $("#st-racha").textContent=racha;
+  $("#st-xp").textContent=(p.xp||0).toLocaleString("es-CL");
+  const {cur,nx}=nivel(p.xp||0);
+  $("#st-lvl").textContent=cur[1];
+  if(nx){$("#st-bar").style.width=Math.round(((p.xp-cur[0])/(nx[0]-cur[0]))*100)+"%";$("#st-next").textContent=(nx[0]-p.xp)+" pts para "+nx[1]}
+  else{$("#st-bar").style.width="100%";$("#st-next").textContent="Nivel máximo"}
+}
+function dueRow(x,conRamo){
+  const r=ramoDe(x.s.codigo)||{};
+  const d=document.createElement("div");d.className="due"+(x.t-Date.now()<2*86400000?" urgent":"");
+  d.style.setProperty("--c",colorDe(x.s.codigo));
+  d.innerHTML=`<div class="when">${esc(fmtFalta(x.t-Date.now()))}</div><p><strong>${esc(x.e.nombre)}</strong><br>${conRamo?esc(r.corto||r.nombre||x.s.curso)+" · ":""}${esc(fmtFecha(x.t))}</p>`;
+  const m=x.e.mision&&(x.s.misiones||[]).find(mm=>mm.id===x.e.mision);
+  if(m){const b=document.createElement("button");b.className="btn c";b.textContent="Preparar";b.onclick=e=>{e.stopPropagation();abrir(x.s,m)};d.appendChild(b)}
+  return d;
+}
+function vistaInicio(){
+  const v=$("#view"); v.innerHTML="";
+  document.documentElement.style.setProperty("--c","#141c18");
+  const ent=entregas(null).filter(x=>x.t-Date.now()<14*86400000);
+  if(ent.length){
+    const sec=document.createElement("section");sec.className="block";
+    sec.innerHTML=`<div class="sh"><h2>Próximas entregas</h2></div>`;
+    const box=document.createElement("div");box.className="dues";ent.forEach(x=>box.appendChild(dueRow(x,true)));sec.appendChild(box);v.appendChild(sec);
+  }
+  const pool=poolDesafio();
+  if(pool.length>=4){
+    const dsec=document.createElement("section");dsec.className="block";
+    const hecho=(prog.desafios||{})[hoy()];
+    const fallas=fallos(null).length;
+    const d=document.createElement("div");d.className="challenge";
+    d.innerHTML=`<span class="k">Desafío del día</span><h3>${hecho===undefined?"8 preguntas, todos tus ramos":"Desafío de hoy listo ✓"}</h3>
+      <p>${hecho===undefined?`Mezcla semanas actuales y pasadas. Primero salen las que fallaste${fallas?` (tienes ${fallas})`:""} y las que no repasas hace tiempo. Encadena aciertos para sumar combo. <strong>Bono +30</strong> una vez al día.`:`Hoy sacaste ${hecho} %. Puedes jugar otra ronda sin bono, o volver mañana por uno nuevo.`}</p>`;
+    const row=document.createElement("div");row.className="row";
+    const b=document.createElement("button");b.className="btn";b.textContent=hecho===undefined?"Jugar":"Otra ronda";b.onclick=abrirDesafio;row.appendChild(b);
+    d.appendChild(row);dsec.appendChild(d);v.appendChild(dsec);
+  }
+  const sec=document.createElement("section");sec.className="block";
+  const lista=listaRamos();
+  sec.innerHTML=`<div class="sh"><h2>Mis ramos</h2><span>${lista.length} en curso</span></div>`;
+  const box=document.createElement("div");box.className="ramos";
+  lista.forEach(r=>{
+    const res=resumen(r.codigo), nx=siguiente(r.codigo), f=fallos(r.codigo).length, en=entregas(r.codigo)[0];
+    const sem=nx?nx.s:semDe(r.codigo)[0];
+    const b=document.createElement("button");b.className="ramo";b.style.setProperty("--c",colorDe(r.codigo));
+    b.onclick=()=>{location.hash=r.codigo.toLowerCase()};
+    const pct=res.total?Math.round(res.hechas/res.total*100):0;
+    b.innerHTML=`<span class="badge">${esc(r.linea||"")}</span>
+      <span class="info"><h3>${esc(r.nombre)}</h3>
+      <span class="sub">${sem?`${esc(et(sem))} ${esc(sem.semana)} · ${esc(sem.titulo)}`:"Misiones en preparación"}${r.termina?` · termina ${esc(new Date(r.termina+"T12:00").toLocaleDateString("es-CL",{day:"numeric",month:"short"}))}`:""}</span>
+      ${res.total?`<span class="bar"><i style="width:${pct}%"></i></span>`:""}
+      <span class="foot">${res.total?`<span>${res.hechas}/${res.total} estaciones</span>`:""}${nx?`<span class="chip c">Sigue: ${esc(nx.m.estacion)}</span>`:(res.total?`<span class="chip c">Al día ✓</span>`:"")}${f?`<span class="chip">${f} por repasar</span>`:""}${en?`<span class="chip warn">${esc(en.e.nombre)}: ${esc(fmtFalta(en.t-Date.now()))}</span>`:""}</span></span>
+      <span class="go" aria-hidden="true">→</span>`;
+    box.appendChild(b);
+  });
+  if(!lista.length)box.innerHTML=`<div class="empty">Todavía no hay ramos cargados.</div>`;
+  sec.appendChild(box);v.appendChild(sec);
+}
+function vistaRamo(cod){
+  const r=ramoDe(cod); if(!r){location.hash="";return}
+  const c=colorDe(cod); document.documentElement.style.setProperty("--c",c);
+  const v=$("#view"); v.innerHTML="";
+  const back=document.createElement("button");back.className="back";back.textContent="← Todos los ramos";back.onclick=()=>{location.hash=""};v.appendChild(back);
+  const res=resumen(cod), f=fallos(cod), sems=semDe(cod);
+  const hero=document.createElement("div");hero.className="hero";
+  hero.innerHTML=`<span class="rails" aria-hidden="true"></span><div class="top"><span class="badge">${esc(r.linea||"")}</span><div><h2>${esc(r.nombre)}</h2><div class="meta">${esc(r.codigo)}${r.docente?" · "+esc(r.docente):""}${r.termina?" · termina el "+esc(new Date(r.termina+"T12:00").toLocaleDateString("es-CL",{day:"numeric",month:"long"})):""}</div></div></div>
+    <div class="nums"><div><b>${res.hechas}/${res.total}</b><span>estaciones</span></div><div><b>${res.pct===null?"—":res.pct+"%"}</b><span>aciertos</span></div><div><b>${f.length}</b><span>por repasar</span></div></div>`;
+  v.appendChild(hero);
+
+  const ent=entregas(cod);
+  if(ent.length){const sec=document.createElement("section");sec.className="block";sec.innerHTML=`<div class="sh"><h2>Entregas</h2></div>`;const box=document.createElement("div");box.className="dues";ent.forEach(x=>box.appendChild(dueRow(x,false)));sec.appendChild(box);v.appendChild(sec)}
+
+  const sec=document.createElement("section");sec.className="block";sec.innerHTML=`<div class="sh"><h2>Sigue aquí</h2></div>`;
+  const nx=siguiente(cod);
+  if(nx){
+    const d=document.createElement("div");d.className="next";
+    d.innerHTML=`<span class="k">${esc(et(nx.s))} ${esc(nx.s.semana)} · Estación ${esc(nx.m.estacion)} · ${esc(nx.m.minutos||5)} min</span><h3>${esc(nx.m.titulo)}</h3><p>${esc(nx.m.intro||"")}</p>`;
+    const b=document.createElement("button");b.className="btn c";b.textContent="Empezar";b.onclick=()=>abrir(nx.s,nx.m);d.appendChild(b);sec.appendChild(d);
+  }else{
+    const d=document.createElement("div");d.className="empty";
+    d.innerHTML=sems.length?`<strong>Al día en este ramo.</strong> Las misiones de la próxima semana llegan el lunes.`:`<strong>Las misiones de este ramo se están preparando.</strong> Aparecen aquí con el material del aula.`;
+    sec.appendChild(d);
+  }
+  if(f.length){
+    const rv=document.createElement("div");rv.className="review";
+    rv.innerHTML=`<p><strong>${f.length} ${f.length===1?"pregunta":"preguntas"} para repasar.</strong> Las que fallaste; si las aciertas, salen de la lista.</p>`;
+    const b=document.createElement("button");b.className="btn ghost";b.textContent="Repasar";b.onclick=()=>abrirRepaso(f);rv.appendChild(b);sec.appendChild(rv);
+  }
+  // sugerir la semana ya empezada con menos dominio
+  const flojas=sems.filter(s=>evaluables(s).length>=3&&(estado(s)==="pasada"||(estado(s)==="actual"&&(s.misiones||[]).some(m=>(prog.misiones[misKey(s,m)]||{}).hecha)))).map(s=>({s,d:dominio(s)})).filter(x=>x.d<80).sort((a,b)=>a.d-b.d);
+  if(flojas.length){
+    const x=flojas[0],rp=document.createElement("div");rp.className="review";
+    rp.innerHTML=`<p><strong>${esc(et(x.s))} ${esc(x.s.semana)}: ${x.d} % de dominio.</strong> ${estado(x.s)==="pasada"?"Ya pasó, pero vuelve en la prueba final.":"Afiánzala antes de que termine."} Un repaso relámpago toma 4 minutos.</p>`;
+    const b=document.createElement("button");b.className="btn ghost";b.textContent="⚡ Relámpago";b.onclick=()=>abrirRelampago(x.s);rp.appendChild(b);sec.appendChild(rp);
+  }
+  v.appendChild(sec);
+
+  if(sems.length){
+    const ls=document.createElement("section");ls.className="block";ls.innerHTML=`<div class="sh"><h2>Recorrido</h2></div>`;
+    ordenSem(sems).forEach(s=>{
+      const card=document.createElement("div");card.className="linecard";
+      const hechas=(s.misiones||[]).filter(m=>(prog.misiones[misKey(s,m)]||{}).hecha).length;
+      const est=estado(s), dom=dominio(s), rep=(prog.repasos||{})[s.id];
+      const chip=est==="actual"?`<span class="chip now">${s.etiqueta?"Disponible":"Esta semana"}</span>`:est==="prox"?`<span class="chip">Parte el ${esc(fmtDia(s.desde))}</span>`:`<span class="chip past">Pasada</span>`;
+      card.innerHTML=`<div class="linehead"><h3>${esc(et(s))} ${esc(s.semana)} · ${esc(s.titulo)}</h3><span>${chip} ${hechas}/${(s.misiones||[]).length}</span></div>`;
+      if(est!=="prox"&&evaluables(s).length>=3){
+        const wb=document.createElement("div");wb.className="weekbar";
+        wb.innerHTML=`<span>Dominio ${dom} %</span><span class="bar"><i style="width:${dom}%"></i></span>${rep?`<span>Último repaso: ${rep.pct===null?"—":rep.pct+" %"}</span>`:""}`;
+        const b=document.createElement("button");b.className="btn ghost";b.textContent="⚡ Repaso relámpago";b.onclick=()=>abrirRelampago(s);wb.appendChild(b);
+        card.appendChild(wb);
+      }else if(est==="prox"){
+        const n=document.createElement("p");n.className="note";n.style.margin="0 0 8px";n.textContent="Ya puedes adelantarla: si haces estaciones antes, después te queda más tiempo para la tarea.";card.appendChild(n);
+      }
+      const ol=document.createElement("ol");ol.className="stations";let marcado=false;
+      (s.misiones||[]).forEach((m,i)=>{
+        const st=prog.misiones[misKey(s,m)]||{};const li=document.createElement("li");
+        if(st.hecha)li.className="done";else if(!marcado){li.className="next";marcado=true}
+        const pct=st.total?Math.round(st.ok/st.total*100)+"%":"Hecha";
+        li.innerHTML=`<span class="stop">${st.hecha?"✓":i+1}</span>`;
+        const b=document.createElement("button");b.className="stationbtn";
+        b.innerHTML=`<span><span class="nm">${esc(m.estacion)}</span><span class="tt">${esc(m.titulo)}</span></span><span class="rt">${st.hecha?`<span class="pill">${pct}</span>`:esc(m.minutos||5)+" min"}</span>`;
+        b.onclick=()=>abrir(s,m);li.appendChild(b);ol.appendChild(li);
+      });
+      card.appendChild(ol);ls.appendChild(card);
+    });
+    v.appendChild(ls);
+  }
+}
+function renderAll(){
+  renderStats();
+  const h=location.hash.replace("#","").toUpperCase();
+  if(h&&ramoDe(h))vistaRamo(h);else vistaInicio();
+}
+window.addEventListener("hashchange",()=>{if(player.hidden){renderAll();scrollTo(0,0)}});
+
+/* ---------- Reproductor ---------- */
+// modo: "mision" (una estación), "repaso" (falladas), "relampago" (una semana) o "desafio" (todo mezclado)
+let cola=[], idx=0, sesionXP=0, aciertos=0, totalQ=0, actual=null, modo="mision", combo=0, mejorCombo=0;
+const player=$("#player"), body=$("#p-body"), next=$("#p-next"), note=$("#p-note");
+function abrir(s,m){modo="mision";actual={s,m};cola=m.pasos.map(p=>({s,m,p}));iniciar(s.codigo)}
+function abrirRepaso(f){modo="repaso";actual=null;cola=shuffle(f).slice(0,10);iniciar(f[0]&&f[0].s.codigo)}
+function abrirRelampago(s){
+  const M={id:"relampago",estacion:"Repaso relámpago",titulo:et(s)+" "+s.semana};
+  const qs=priorizar(evaluables(s)).slice(0,7), c=mazo([s],6);
+  cola=(c.length>=3?[{s,m:{estacion:"Tarjetas mezcladas"},p:{t:"tarjetas",cartas:c}}]:[]).concat(shuffle(qs));
+  modo="relampago";actual={s,m:M};iniciar(s.codigo);
+}
+function abrirDesafio(){
+  const pool=priorizar(poolDesafio());
+  // no más de 4 preguntas de un mismo ramo, para que el desafío mezcle
+  const por={},sel=[];
+  for(const x of pool){if(sel.length>=8)break;const k=x.s.codigo;if((por[k]||0)>=4)continue;por[k]=(por[k]||0)+1;sel.push(x)}
+  for(const x of pool){if(sel.length>=8)break;if(!sel.includes(x))sel.push(x)}
+  cola=shuffle(sel);modo="desafio";actual=null;iniciar(null);
+}
+function iniciar(cod){player.style.setProperty("--c",cod?colorDe(cod):"#141c18");idx=0;sesionXP=0;aciertos=0;totalQ=0;combo=0;mejorCombo=0;$("#p-xp").textContent="+0";$("#p-combo").hidden=true;player.hidden=false;document.body.style.overflow="hidden";paso()}
+// aciertos seguidos a la primera suman bono: x2 → +2, x3 → +4 ... hasta +8
+function racha(ok){
+  const el=$("#p-combo");
+  if(!ok){combo=0;el.hidden=true;return}
+  combo++; mejorCombo=Math.max(mejorCombo,combo);
+  if(combo>=2){ganar(Math.min(combo-1,4)*2);el.hidden=false;el.textContent="Combo ×"+combo;el.classList.remove("pop");void el.offsetWidth;el.classList.add("pop")}
+}
+function cerrar(){player.hidden=true;document.body.style.overflow="";save();renderAll()}
+$("#p-close").onclick=cerrar;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!player.hidden)cerrar()});
+function segs(){const el=$("#p-segs");el.innerHTML="";cola.forEach((_,i)=>{const x=document.createElement("i");if(i<idx)x.className="on";else if(i===idx)x.className="cur";el.appendChild(x)})}
+function setNext(label,fn,enabled=true){next.textContent=label;next.disabled=!enabled;next.onclick=fn}
+function avanzar(){idx++; if(idx<cola.length)paso(); else fin()}
+function registrar(id,ok){
+  if(!id)return; const P=prog.preguntas; const r=P[id]||{ok:0,fallos:0};
+  if(ok){r.ok++;r.pend=false}else{r.fallos++;r.pend=true}
+  r.ultima=hoy(); P[id]=r;
+}
+function paso(){
+  segs(); body.innerHTML=""; note.textContent=""; body.scrollTop=0; player.scrollTop=0;
+  const {s,m,p}=cola[idx];
+  if(modo==="desafio")player.style.setProperty("--c",colorDe(s.codigo));
+  const k=document.createElement("div");k.className="kicker";
+  const r=ramoDe(s.codigo)||{};
+  k.textContent=modo==="mision"?`${m.estacion} · ${m.titulo}`
+    :modo==="desafio"?`Desafío · ${r.corto||s.curso} · ${et(s)} ${s.semana}`
+    :modo==="relampago"?`Relámpago · ${et(s)} ${s.semana} · ${m.estacion}`
+    :`Repaso · ${et(s)} ${s.semana} · ${m.estacion}`;
+  body.appendChild(k);
+  ({lectura,tarjetas,mc,orden,clasificar,taller}[p.t]||lectura)(p,s,m);
+}
+function lectura(p){
+  const d=document.createElement("div");d.className="reading";
+  d.innerHTML=(p.titulo?`<h2 class="q" style="margin-bottom:12px">${esc(p.titulo)}</h2>`:"")+(p.texto||[]).map(t=>`<p>${esc(t)}</p>`).join("")+(p.fuente?`<p class="src">Fuente: ${esc(p.fuente)}</p>`:"");
+  body.appendChild(d); setNext("Continuar",avanzar);
+}
+function tarjetas(p){
+  let i=0; const vistas=new Set();
+  const wrap=document.createElement("div");wrap.style.display="grid";wrap.style.gap="12px";
+  const h=document.createElement("h2");h.className="q";h.textContent="Tarjetas: toca para dar vuelta";
+  const c3=document.createElement("div");c3.className="card3d";
+  const nav=document.createElement("div");nav.className="cardnav";
+  wrap.append(h,c3,nav);body.appendChild(wrap);
+  const draw=()=>{
+    const [f,b]=p.cartas[i];
+    c3.innerHTML=`<button class="flip" id="flip" aria-label="Dar vuelta la tarjeta"><div class="face"><span class="big">${esc(f)}</span><span class="hint">Toca para ver la respuesta</span></div><div class="face back"><p>${esc(b)}</p></div></button>`;
+    const fl=$("#flip"); fl.onclick=()=>{fl.classList.toggle("on");vistas.add(i);upd()};
+    nav.innerHTML="";
+    const pr=document.createElement("button");pr.className="btn ghost";pr.textContent="← Anterior";pr.disabled=i===0;pr.onclick=()=>{i--;draw()};
+    const ct=document.createElement("span");ct.className="note";ct.textContent=(i+1)+" de "+p.cartas.length;
+    const nx=document.createElement("button");nx.className="btn ghost";nx.textContent="Siguiente →";nx.disabled=i===p.cartas.length-1;nx.onclick=()=>{i++;draw()};
+    nav.append(pr,ct,nx); upd();
+  };
+  const upd=()=>{const all=vistas.size>=p.cartas.length;note.textContent=all?"Viste todas":`Vistas ${vistas.size} de ${p.cartas.length}`;next.disabled=!all};
+  setNext("Ya las repasé",()=>{ganar(10);avanzar()},false);
+  draw();
+}
+function mc(p){
+  const h=document.createElement("p");h.className="q";h.textContent=p.p;body.appendChild(h);
+  const ops=shuffle(p.ops.map((t,i)=>({t,i})));
+  const box=document.createElement("div");box.className="opts";body.appendChild(box);
+  const fb=document.createElement("div");
+  let intento=0;
+  ops.forEach(o=>{
+    const b=document.createElement("button");b.className="opt";b.textContent=o.t;
+    b.onclick=()=>{
+      intento++; const ok=o.i===p.ok;
+      if(ok){
+        b.classList.add("ok"); box.querySelectorAll(".opt").forEach(x=>x.disabled=true);
+        if(intento===1){ganar(10);aciertos++;racha(true)} totalQ++;
+        registrar(p.id,intento===1);
+        fb.className="fb ok";fb.innerHTML=`<strong>${intento===1?"¡Correcto!":"Ahora sí"}</strong><p>${esc(p.exp||"")}</p>`;
+        body.appendChild(fb); setNext("Continuar",avanzar);
+      }else{
+        b.classList.add("bad"); b.disabled=true; racha(false);
+        fb.className="fb bad";fb.innerHTML=`<strong>No es esa</strong><p>Intenta otra vez. Esta pregunta quedará en tu repaso.</p>`;
+        body.appendChild(fb);
+      }
+    };
+    box.appendChild(b);
+  });
+  setNext("Continuar",avanzar,false);
+}
+function orden(p){
+  const h=document.createElement("p");h.className="q";h.textContent=p.p;body.appendChild(h);
+  const sel=[]; const pool=shuffle(p.items.map((t,i)=>({t,i})));
+  const slots=document.createElement("div");slots.className="order";
+  const pl=document.createElement("div");pl.className="pool";
+  const tip=document.createElement("p");tip.className="note";tip.textContent="Toca los pasos en el orden correcto. Toca un paso ya puesto para quitarlo.";
+  body.append(tip,slots,pl);
+  let revisado=false;
+  const draw=()=>{
+    slots.innerHTML="";
+    p.items.forEach((_,k)=>{const d=document.createElement("button");d.className="slot"+(sel[k]?" filled":"");d.style.textAlign="left";d.style.width="100%";
+      d.innerHTML=`<b>${k+1}</b><span>${sel[k]?esc(sel[k].t):""}</span>`;
+      if(sel[k]&&!revisado)d.onclick=()=>{sel.splice(k,1);draw()}; else d.disabled=!sel[k]||revisado;
+      if(revisado&&sel[k])d.classList.add(sel[k].i===k?"ok":"bad");
+      slots.appendChild(d)});
+    pl.innerHTML="";
+    pool.forEach(o=>{const b=document.createElement("button");b.className="chip";b.textContent=o.t;b.disabled=revisado||sel.includes(o);b.onclick=()=>{sel.push(o);draw()};pl.appendChild(b)});
+    next.disabled=sel.length<p.items.length&&!revisado;
+  };
+  setNext("Comprobar",()=>{
+    revisado=true; const ok=sel.every((o,k)=>o.i===k); totalQ++;
+    if(ok){ganar(15);aciertos++}
+    racha(ok); registrar(p.id,ok); draw();
+    const fb=document.createElement("div");fb.className="fb "+(ok?"ok":"bad");
+    fb.innerHTML=`<strong>${ok?"¡Orden correcto!":"Revisa el orden"}</strong>`+(ok?"":`<ol>${p.items.map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`)+`<p>${esc(p.exp||"")}</p>`;
+    body.appendChild(fb); setNext("Continuar",avanzar);
+  },false);
+  draw();
+}
+function clasificar(p){
+  const h=document.createElement("p");h.className="q";h.textContent=p.p;body.appendChild(h);
+  const resp={}; const items=shuffle(p.items.map((x,i)=>({t:x[0],c:x[1],i})));
+  const box=document.createElement("div");box.className="cls";body.appendChild(box);
+  let revisado=false;
+  const draw=()=>{
+    box.innerHTML="";
+    items.forEach(it=>{
+      const d=document.createElement("div");d.className="clsitem";
+      if(revisado)d.classList.add(resp[it.i]===it.c?"ok":"bad");
+      d.innerHTML=`<span>${esc(it.t)}</span>`;
+      const cats=document.createElement("div");cats.className="cats";
+      p.cats.forEach((c,ci)=>{const b=document.createElement("button");b.className="cat";b.textContent=c;b.setAttribute("aria-pressed",resp[it.i]===ci);b.disabled=revisado;b.onclick=()=>{resp[it.i]=ci;draw()};cats.appendChild(b)});
+      d.appendChild(cats);
+      if(revisado&&resp[it.i]!==it.c){const r=document.createElement("span");r.className="right";r.textContent="Correcta: "+p.cats[it.c];d.appendChild(r)}
+      box.appendChild(d);
+    });
+    if(!revisado)next.disabled=Object.keys(resp).length<items.length;
+  };
+  setNext("Comprobar",()=>{
+    revisado=true; const buenas=items.filter(it=>resp[it.i]===it.c).length; const ok=buenas===items.length;
+    ganar(buenas*5); totalQ++; if(ok)aciertos++; racha(ok); registrar(p.id,ok); draw();
+    const fb=document.createElement("div");fb.className="fb "+(ok?"ok":"bad");
+    fb.innerHTML=`<strong>${buenas} de ${items.length}</strong><p>${esc(p.exp||"")}</p>`;
+    body.appendChild(fb); setNext("Continuar",avanzar);
+  },false);
+  draw();
+}
+function taller(p,s,m){
+  const key=k=>s.id+"/"+k;
+  const w=document.createElement("div");w.className="taller";
+  w.innerHTML=`<h2 class="q">Prepara tu respuesta</h2><div class="case"><strong>El caso.</strong> ${esc(p.caso)}</div>
+  <p class="note">Escribe tus ideas con tus palabras: no tiene que quedar perfecto. Se guarda solo. Después pídele a Claude una revisión según la rúbrica. Claude te dice qué falta, pero no escribe la respuesta por ti, porque la tarea tiene que ser elaboración propia.</p>`;
+  p.preguntas.forEach(q=>{
+    const d=document.createElement("div");d.className="tq";
+    d.innerHTML=`<h3>${esc(q.p)}</h3><span class="ind">Lo que evalúa el profe: ${esc(q.indicador)}</span>
+      <details><summary>Ver pistas</summary><ul>${q.pistas.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>
+      <label class="note" for="ta-${q.id}">Tus ideas</label><textarea id="ta-${q.id}"></textarea>
+      <div class="row"><button class="btn ghost" id="ai-${q.id}">Revisar con Claude</button><span class="note" id="cnt-${q.id}"></span></div><div class="ai" id="out-${q.id}" hidden></div>`;
+    w.appendChild(d);
+  });
+  const ck=document.createElement("div");ck.className="tq";
+  ck.innerHTML=`<h3>Antes de entregar</h3><div class="check">${p.checklist.map((c,i)=>`<label><input type="checkbox" id="ck-${i}"> <span>${esc(c)}</span></label>`).join("")}</div>`;
+  w.appendChild(ck); body.appendChild(w);
+  p.preguntas.forEach(q=>{
+    const ta=$("#ta-"+q.id), cnt=$("#cnt-"+q.id), out=$("#out-"+q.id), bt=$("#ai-"+q.id);
+    ta.value=prog.notas[key(q.id)]||"";
+    const upd=()=>{const n=ta.value.trim()?ta.value.trim().split(/\s+/).length:0;cnt.textContent=n+" palabras"};upd();
+    ta.oninput=()=>{prog.notas[key(q.id)]=ta.value;upd();saveSoon()};
+    const prev=prog.notas[key(q.id)+"#ai"]; if(prev){out.hidden=false;out.textContent=prev}
+    // sin revisión integrada (web o APK), el botón copia el pedido completo para pegarlo en Claude
+    if(!sample)bt.textContent="Copiar para revisar en Claude";
+    bt.onclick=async()=>{
+      if(ta.value.trim().split(/\s+/).length<25){toast("Escribe al menos unas 25 palabras para revisar");return}
+      const prompt=`Eres docente de la asignatura "${s.curso||"de la carrera"}" (IACC, Chile, Técnico en Prevención de Riesgos). Un estudiante prepara el borrador de una tarea. Tu trabajo es darle retroalimentación formativa, NO escribir la respuesta por él (la tarea debe ser elaboración propia).
+${p.ia?`
+REGLA DE USO DE IA DE ESTA TAREA: ${p.ia}
+Respétala estrictamente: no calcules ni sugieras valores numéricos del caso, no construyas tablas y no interpretes los datos por él. Solo dile si su borrador cubre todo lo que pide la pregunta, si usa bien los conceptos y si explica su procedimiento.
+`:""}
+CASO: ${p.caso}
+
+PREGUNTA: ${q.p}
+INDICADOR DE EVALUACIÓN: ${q.indicador}
+Escala de la rúbrica: 4 = de forma correcta; 3 = de forma general; 2 = de forma parcial; 1 = presenta dificultad; 0 = no responde.
+Contenidos de la semana que se espera usar: ${q.pistas.join("; ")}.
+
+BORRADOR DEL ESTUDIANTE:
+"""${ta.value.trim().slice(0,6000)}"""
+
+Responde en español de Chile, cercano y directo, en texto plano (sin markdown, sin asteriscos), con este formato exacto:
+Nivel estimado: N de 4, en una frase por qué.
+Lo que está bien: 1 o 2 puntos breves.
+Lo que falta: 2 a 4 puntos concretos, en forma de pregunta o pista (no redactes la respuesta).
+Términos técnicos que podrías usar: 3 a 5 palabras.
+Máximo 170 palabras.`;
+      if(!sample){
+        const ok=await copiar(prompt);
+        out.hidden=false;
+        out.textContent=ok?"Copiado. Abre Claude (claude.ai o la app), pega el texto y envíalo: te dirá qué le falta a tu borrador según la rúbrica, sin escribirlo por ti.":"No se pudo copiar automáticamente. Mantén presionado este texto para copiarlo:\n\n"+prompt;
+        return;
+      }
+      bt.disabled=true; out.hidden=false; out.textContent="Revisando…";
+      try{
+        const r=await sample(prompt,{onText:({text})=>{out.textContent=text},cache:false});
+        out.textContent=r.text; prog.notas[key(q.id)+"#ai"]=r.text;
+        const flag=key(q.id)+"#xp"; if(!prog.notas[flag]){prog.notas[flag]="1";ganar(20)} save();
+      }catch(e){
+        if(e&&e.code==="not_granted"){out.textContent="La revisión con Claude no está habilitada en esta vista.";sample=null}
+        else if(e&&e.code==="rate_limited"){out.textContent="Demasiadas revisiones seguidas. Espera un par de minutos."}
+        else out.textContent="No se pudo revisar ahora. Inténtalo de nuevo en un rato.";
+      }
+      bt.disabled=!sample;
+    };
+  });
+  p.checklist.forEach((_,i)=>{const c=$("#ck-"+i);const k=key("ck"+i);c.checked=!!prog.checks[k];c.onchange=()=>{prog.checks[k]=c.checked;saveSoon()}});
+  setNext("Terminar taller",()=>{totalQ=0;avanzar()});
+}
+function fin(){
+  segs(); body.innerHTML=""; note.textContent="";
+  let titulo="Misión cumplida", extra="";
+  const pct=totalQ?Math.round(aciertos/totalQ*100):null;
+  if(modo==="mision"&&actual){
+    const k=misKey(actual.s,actual.m); const prev=prog.misiones[k]||{};
+    if(!prev.hecha)ganar(25);
+    prog.misiones[k]={hecha:true,ok:Math.max(aciertos,prev.ok||0),total:totalQ||prev.total||0,fecha:hoy()};
+  }else if(modo==="relampago"&&actual){
+    titulo="Repaso relámpago";
+    prog.repasos=prog.repasos||{}; prog.repasos[actual.s.id]={fecha:hoy(),pct};
+    extra=`Dominio de ${et(actual.s).toLowerCase()} ${actual.s.semana}: <strong>${dominio(actual.s)} %</strong>.`;
+  }else if(modo==="desafio"){
+    titulo="Desafío del día";
+    prog.desafios=prog.desafios||{};
+    const h=hoy();
+    if(prog.desafios[h]===undefined){ganar(30);extra="Bono diario: <strong>+30</strong>."}
+    prog.desafios[h]=Math.max(pct||0,prog.desafios[h]||0);
+    // guardar solo los últimos 30 días
+    Object.keys(prog.desafios).sort().slice(0,-30).forEach(x=>delete prog.desafios[x]);
+  }else titulo="Repaso hecho";
+  const {cur}=nivel(prog.xp||0);
+  const d=document.createElement("div");d.className="done-screen";
+  d.innerHTML=`<div class="kicker">${esc(titulo)}</div><div class="score">+${sesionXP}</div><p>${pct===null?"Avance guardado.":`Acertaste ${aciertos} de ${totalQ} a la primera (${pct}%).`} ${mejorCombo>=3?`Mejor combo: ×${mejorCombo}. `:""}Nivel: <strong>${esc(cur[1])}</strong> · racha de ${prog.racha||1} ${prog.racha===1?"día":"días"}.</p>${extra?`<p>${extra}</p>`:""}${pct!==null&&pct<100?`<p class="note">Lo que fallaste quedó en tu repaso.</p>`:""}`;
+  body.appendChild(d);
+  save();
+  const nx=modo==="mision"&&actual?siguiente(actual.s.codigo):null;
+  if(nx){setNext("Siguiente estación →",()=>abrir(nx.s,nx.m));note.textContent="O sal con ✕ y sigue mañana"}
+  else if(modo==="relampago"&&actual){const s0=actual.s;setNext("Otra ronda",()=>abrirRelampago(s0));note.textContent="Las preguntas cambian en cada ronda"}
+  else setNext("Volver al tablero",cerrar);
+}
+
+
+/* ---------- Arranque ---------- */
+async function start(){
+  const timer=setTimeout(()=>{if(!semanas.length)$("#view").innerHTML=`<div class="empty" style="margin-top:20px">No se pudo conectar con tus datos todavía. Revisa tu conexión; la página seguirá intentando.</div>`},10000);
+  try{db=await claude.use("db")}catch(e){db=null}
+  try{sample=await claude.use("sample")}catch(e){sample=null}
+  if(!db){clearTimeout(timer);$("#view").innerHTML=`<div class="empty" style="margin-top:20px">Abre esta página con tu sesión de Claude iniciada para ver tus ramos y guardar tu avance.</div>`;return}
+  let got={p:false,s:false,r:false};
+  const ready=()=>{if(got.p&&got.s&&got.r){clearTimeout(timer);if(player.hidden)renderAll();else renderStats()}};
+  db.doc(PROG_PATH).onSnapshot(snap=>{
+    if(snap.exists&&!saving&&!snap.metadata.hasPendingWrites)prog=Object.assign(blank(),JSON.parse(JSON.stringify(snap.data()||{})));
+    got.p=true;ready();
+  },()=>{got.p=true;ready()});
+  db.doc("config/ramos").onSnapshot(snap=>{
+    ramos=(snap.exists&&Array.isArray((snap.data()||{}).ramos))?JSON.parse(JSON.stringify(snap.data().ramos)):[];
+    got.r=true;ready();
+  },()=>{got.r=true;ready()});
+  db.collection("semanas").onSnapshot(q=>{
+    semanas=q.docs.map(d=>d.data()).filter(x=>x&&Array.isArray(x.misiones));
+    got.s=true;ready();
+  },()=>{got.s=true;clearTimeout(timer);$("#view").innerHTML=`<div class="empty" style="margin-top:20px">No se pudieron cargar las misiones. Recarga la página en un rato.</div>`});
+  setInterval(()=>{if(player.hidden&&got.s)renderAll()},60000);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(player.hidden)renderAll()});
+}
+prog=blank(); renderStats();
+let espera=0;
+(function boot(){
+  if(window.claude&&typeof window.claude.use==="function"){start();return}
+  if(++espera>40){$("#view").innerHTML=`<div class="empty" style="margin-top:20px">Abre esta página desde Claude para ver tus ramos.</div>`;return}
+  setTimeout(boot,250);
+})();
+})();
+</script>
+</body>
+</html>
