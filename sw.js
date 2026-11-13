@@ -1,6 +1,6 @@
 /* Guarda la app para usarla sin conexión. Las semanas nuevas llegan al recargar con internet. */
-const CACHE = "turno-202611131125";
-const ARCHIVOS = ["./", "index.html", "datos.js", "local.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+const CACHE = "turno-202611131135";
+const ARCHIVOS = ["./", "index.html", "datos.js", "datos.json", "local.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));

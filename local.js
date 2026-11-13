@@ -3,9 +3,33 @@
    Los datos de las semanas vienen de datos.js (window.TURNO_DATOS). */
 (function(){
   var KEY = "turno-progreso-v1";
+  var KEY_DATOS = "turno-datos-v1";
   var memoria = null; // respaldo si el navegador bloquea localStorage
   var D = window.TURNO_DATOS || { ramos: [], semanas: [] };
   var esApk = /TurnoDeEstudioApp/.test(navigator.userAgent);
+
+  // Contenido: el que trae la app, o uno más nuevo bajado antes desde el sitio.
+  try {
+    var guardado = JSON.parse(localStorage.getItem(KEY_DATOS) || "null");
+    if (guardado && guardado.generado && guardado.generado > (D.generado || "")) D = guardado;
+  } catch (e) {}
+  var oyentes = { ramos: [], semanas: [] };
+  function avisar(){
+    oyentes.ramos.forEach(function(cb){ cb(snap({ ramos: D.ramos })); });
+    oyentes.semanas.forEach(function(cb){ cb({ docs: D.semanas.map(function(s){ return { data: function(){ return s; } }; }) }); });
+  }
+  // Con internet, revisa si el sitio tiene semanas nuevas (la APK no necesita reinstalarse para recibirlas).
+  function buscarNuevo(){
+    var url = window.TURNO_DATOS_URL;
+    if (!url || !window.fetch) return;
+    fetch(url + "?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(n){
+      if (!n || !n.generado || !Array.isArray(n.semanas) || n.generado <= (D.generado || "")) return;
+      D = n;
+      try { localStorage.setItem(KEY_DATOS, JSON.stringify(n)); } catch (e) {}
+      avisar();
+      if (window.__turnoAviso) window.__turnoAviso("Contenido actualizado: hay misiones nuevas");
+    }).catch(function(){});
+  }
 
   function leer(){
     try { var t = localStorage.getItem(KEY); return t ? JSON.parse(t) : memoria; }
@@ -21,6 +45,7 @@
     doc: function(path){
       return {
         onSnapshot: function(cb){
+          if (path === "config/ramos") oyentes.ramos.push(cb);
           setTimeout(function(){
             if (path === "config/ramos") cb(snap({ ramos: D.ramos }));
             else cb(snap(leer()));
@@ -33,7 +58,8 @@
     collection: function(){
       return {
         onSnapshot: function(cb){
-          setTimeout(function(){ cb({ docs: D.semanas.map(function(s){ return { data: function(){ return s; } }; }) }); }, 0);
+          oyentes.semanas.push(cb);
+          setTimeout(function(){ cb({ docs: D.semanas.map(function(s){ return { data: function(){ return s; } }; }) }); buscarNuevo(); }, 0);
           return function(){};
         }
       };
@@ -57,6 +83,7 @@
   }
 
   function montarHerramientas(){
+    window.__turnoAviso = function(t){ var el = document.getElementById("toast"); if (!el) return; el.textContent = t; el.hidden = false; setTimeout(function(){ el.hidden = true; }, 3000); };
     var box = document.getElementById("local-tools");
     if (!box) return;
     var apk = window.TURNO_APK_URL;
@@ -97,6 +124,9 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", montarHerramientas);
   else montarHerramientas();
+
+  // En la versión del sitio, cada vez que se vuelve a la app revisa si hay semanas nuevas
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) buscarNuevo(); });
 
   /* ---------- Uso sin conexión (solo web, no en la APK) ---------- */
   if (!esApk && "serviceWorker" in navigator && location.protocol === "https:") {
