@@ -1,5 +1,5 @@
 /* Guarda la app para usarla sin conexión. Las semanas nuevas llegan al recargar con internet. */
-const CACHE = "turno-202611131144";
+const CACHE = "turno-202611131149";
 const ARCHIVOS = ["./", "index.html", "datos.js", "datos.json", "local.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
